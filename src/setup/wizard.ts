@@ -58,17 +58,36 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
     console.log(chalk.yellow("  No API key set. The automaton will have limited functionality.\n"));
   }
 
-  // ─── 3. Interactive questions ─────────────────────────────────
+  // ─── 3. Interactive questions (or env vars for non-TTY deployments) ──────
   console.log(chalk.cyan("  [3/6] Setup questions\n"));
 
-  const name = await promptRequired("What do you want to name your automaton?");
-  console.log(chalk.green(`  Name: ${name}\n`));
+  let name: string;
+  if (process.env.AUTOMATON_NAME) {
+    name = process.env.AUTOMATON_NAME;
+    console.log(chalk.green(`  Name: ${name} (from env)\n`));
+  } else {
+    name = await promptRequired("What do you want to name your automaton?");
+    console.log(chalk.green(`  Name: ${name}\n`));
+  }
 
-  const genesisPrompt = await promptMultiline("Enter the genesis prompt (system prompt) for your automaton.");
-  console.log(chalk.green(`  Genesis prompt set (${genesisPrompt.length} chars)\n`));
+  let genesisPrompt: string;
+  if (process.env.AUTOMATON_GENESIS_PROMPT) {
+    genesisPrompt = process.env.AUTOMATON_GENESIS_PROMPT;
+    console.log(chalk.green(`  Genesis prompt set (${genesisPrompt.length} chars, from env)\n`));
+  } else {
+    genesisPrompt = await promptMultiline("Enter the genesis prompt (system prompt) for your automaton.");
+    console.log(chalk.green(`  Genesis prompt set (${genesisPrompt.length} chars)\n`));
+  }
 
-  const creatorAddress = await promptAddress("Your Ethereum wallet address (0x...)");
-  console.log(chalk.green(`  Creator: ${creatorAddress}\n`));
+  let creatorAddress: string;
+  const envCreator = process.env.AUTOMATON_CREATOR_ADDRESS ?? "";
+  if (envCreator && /^0x[0-9a-fA-F]{40}$/.test(envCreator)) {
+    creatorAddress = envCreator;
+    console.log(chalk.green(`  Creator: ${creatorAddress} (from env)\n`));
+  } else {
+    creatorAddress = await promptAddress("Your Ethereum wallet address (0x...)");
+    console.log(chalk.green(`  Creator: ${creatorAddress}\n`));
+  }
 
   // ─── 4. Detect environment ────────────────────────────────────
   console.log(chalk.cyan("  [4/6] Detecting environment..."));
