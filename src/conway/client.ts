@@ -6,6 +6,8 @@
  * Adapted from @aiws/sdk patterns.
  */
 
+import { exec as cpExec } from "child_process";
+import fs from "fs";
 import type {
   ConwayClient,
   ExecResult,
@@ -19,6 +21,29 @@ import type {
   DnsRecord,
   ModelInfo,
 } from "../types.js";
+
+/** Run a shell command in the local process environment (Railway / Docker fallback). */
+function execLocal(command: string, timeout?: number): Promise<ExecResult> {
+  return new Promise((resolve) => {
+    cpExec(command, { timeout: timeout || 30000 }, (err, stdout, stderr) => {
+      resolve({
+        stdout: stdout || "",
+        stderr: stderr || (err ? err.message : ""),
+        exitCode: err ? (err.code as number ?? 1) : 0,
+      });
+    });
+  });
+}
+
+/**
+ * Returns true only when the process is actually running inside a
+ * Conway-managed sandbox (the platform injects /etc/conway/sandbox.json).
+ * A user-set CONWAY_SANDBOX_ID env var does NOT imply this — it may be
+ * set on Railway/Docker for other reasons.
+ */
+function isInsideConwaySandbox(): boolean {
+  return fs.existsSync("/etc/conway/sandbox.json");
+}
 
 interface ConwayClientOptions {
   apiUrl: string;
@@ -65,6 +90,11 @@ export function createConwayClient(
     command: string,
     timeout?: number,
   ): Promise<ExecResult> => {
+    // When not running inside a Conway-managed sandbox (e.g. Railway, Docker),
+    // execute commands locally rather than trying the API and getting 403/404.
+    if (!isInsideConwaySandbox()) {
+      return execLocal(command, timeout);
+    }
     const result = await request(
       "POST",
       `/v1/sandboxes/${sandboxId}/exec`,
@@ -81,6 +111,12 @@ export function createConwayClient(
     path: string,
     content: string,
   ): Promise<void> => {
+    if (!isInsideConwaySandbox()) {
+      const dir = path.substring(0, path.lastIndexOf("/"));
+      if (dir) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path, content, "utf-8");
+      return;
+    }
     await request(
       "POST",
       `/v1/sandboxes/${sandboxId}/files/upload/json`,
@@ -89,6 +125,13 @@ export function createConwayClient(
   };
 
   const readFile = async (filePath: string): Promise<string> => {
+    if (!isInsideConwaySandbox()) {
+      try {
+        return fs.readFileSync(filePath, "utf-8");
+      } catch {
+        return "";
+      }
+    }
     const result = await request(
       "GET",
       `/v1/sandboxes/${sandboxId}/files/read?path=${encodeURIComponent(filePath)}`,
