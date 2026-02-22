@@ -29,6 +29,11 @@ export function getWalletPath(): string {
 /**
  * Get or create the automaton's wallet.
  * The private key IS the automaton's identity -- protect it.
+ *
+ * Priority order:
+ *   1. AUTOMATON_PRIVATE_KEY env var (Railway / Docker deployments)
+ *   2. ~/.automaton/wallet.json (persisted from a previous run)
+ *   3. Generate a new key and write it to wallet.json
  */
 export async function getWallet(): Promise<{
   account: PrivateKeyAccount;
@@ -38,27 +43,51 @@ export async function getWallet(): Promise<{
     fs.mkdirSync(AUTOMATON_DIR, { recursive: true, mode: 0o700 });
   }
 
+  // 1. Env var takes highest priority (survives redeployments)
+  const envKey = process.env.AUTOMATON_PRIVATE_KEY;
+  if (envKey) {
+    const privateKey = envKey.startsWith("0x")
+      ? (envKey as `0x${string}`)
+      : (`0x${envKey}` as `0x${string}`);
+    const account = privateKeyToAccount(privateKey);
+
+    // Write to wallet.json so other code paths (e.g. --status) work too
+    if (!fs.existsSync(WALLET_FILE)) {
+      const walletData: WalletData = {
+        privateKey,
+        createdAt: new Date().toISOString(),
+      };
+      fs.writeFileSync(WALLET_FILE, JSON.stringify(walletData, null, 2), {
+        mode: 0o600,
+      });
+    }
+
+    return { account, isNew: false };
+  }
+
+  // 2. Load from wallet.json
   if (fs.existsSync(WALLET_FILE)) {
     const walletData: WalletData = JSON.parse(
       fs.readFileSync(WALLET_FILE, "utf-8"),
     );
     const account = privateKeyToAccount(walletData.privateKey);
     return { account, isNew: false };
-  } else {
-    const privateKey = generatePrivateKey();
-    const account = privateKeyToAccount(privateKey);
-
-    const walletData: WalletData = {
-      privateKey,
-      createdAt: new Date().toISOString(),
-    };
-
-    fs.writeFileSync(WALLET_FILE, JSON.stringify(walletData, null, 2), {
-      mode: 0o600,
-    });
-
-    return { account, isNew: true };
   }
+
+  // 3. Generate a new key
+  const privateKey = generatePrivateKey();
+  const account = privateKeyToAccount(privateKey);
+
+  const walletData: WalletData = {
+    privateKey,
+    createdAt: new Date().toISOString(),
+  };
+
+  fs.writeFileSync(WALLET_FILE, JSON.stringify(walletData, null, 2), {
+    mode: 0o600,
+  });
+
+  return { account, isNew: true };
 }
 
 /**
