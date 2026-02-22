@@ -217,11 +217,12 @@ cast send 0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43 \
 \`\`\`
 `;
 
+export { SKILL_DEX_TRADING };
+
 const DEFAULT_SKILLS: { dir: string; content: string }[] = [
   { dir: "conway-compute", content: SKILL_COMPUTE },
   { dir: "conway-payments", content: SKILL_PAYMENTS },
   { dir: "survival", content: SKILL_SURVIVAL },
-  { dir: "dex-trading", content: SKILL_DEX_TRADING },
 ];
 
 export function installDefaultSkills(skillsDir: string): void {

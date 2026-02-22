@@ -135,7 +135,7 @@ export async function runSetupWizard(): Promise<AutomatonConfig> {
   // Default skills
   const skillsDir = config.skillsDir || "~/.automaton/skills";
   installDefaultSkills(skillsDir);
-  console.log(chalk.green("  Default skills installed (conway-compute, conway-payments, survival)\n"));
+  console.log(chalk.green("  Default skills installed (conway-compute, conway-payments, survival). dex-trading bootstrapped at runtime.\n"));
 
   // ─── 6. Funding guidance ──────────────────────────────────────
   console.log(chalk.cyan("  [6/6] Funding\n"));

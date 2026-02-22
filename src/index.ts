@@ -7,6 +7,8 @@
  * the heartbeat daemon + agent loop.
  */
 
+import fs from "fs";
+import path from "path";
 import { getWallet, getAutomatonDir } from "./identity/wallet.js";
 import { provision, loadApiKeyFromConfig } from "./identity/provision.js";
 import { loadConfig, resolvePath } from "./config.js";
@@ -21,6 +23,7 @@ import {
 import { runAgentLoop } from "./agent/loop.js";
 import { loadSkills } from "./skills/loader.js";
 import { initStateRepo } from "./git/state-versioning.js";
+import { SKILL_DEX_TRADING } from "./setup/defaults.js";
 import { createSocialClient } from "./social/client.js";
 import type { AutomatonIdentity, AgentState, Skill, SocialClientInterface } from "./types.js";
 
@@ -216,6 +219,17 @@ async function run(): Promise<void> {
   const skillsDir = config.skillsDir || "~/.automaton/skills";
   let skills: Skill[] = [];
   try {
+    // Bootstrap dex-trading skill on every startup if not already on disk
+    const resolvedSkillsDir = skillsDir.startsWith("~")
+      ? path.join(process.env.HOME || "/root", skillsDir.slice(1))
+      : skillsDir;
+    const dexSkillPath = path.join(resolvedSkillsDir, "dex-trading", "SKILL.md");
+    if (!fs.existsSync(dexSkillPath)) {
+      fs.mkdirSync(path.dirname(dexSkillPath), { recursive: true });
+      fs.writeFileSync(dexSkillPath, SKILL_DEX_TRADING, { mode: 0o600 });
+      console.log(`[${new Date().toISOString()}] Bootstrapped dex-trading skill.`);
+    }
+
     skills = loadSkills(skillsDir, db);
     console.log(`[${new Date().toISOString()}] Loaded ${skills.length} skills.`);
   } catch (err: any) {
