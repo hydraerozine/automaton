@@ -32,10 +32,16 @@ export function loadConfig(): AutomatonConfig | null {
     const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
     const apiKey = raw.conwayApiKey || loadApiKeyFromConfig();
 
+    // Env var overrides take priority so Railway / Docker deployments don't
+    // need to touch protected config files.
+    const inferenceModel =
+      process.env.AUTOMATON_INFERENCE_MODEL || raw.inferenceModel;
+
     return {
       ...DEFAULT_CONFIG,
       ...raw,
       conwayApiKey: apiKey,
+      inferenceModel,
     } as AutomatonConfig;
   } catch {
     return null;
@@ -91,7 +97,10 @@ export function createConfig(params: {
     conwayApiUrl:
       DEFAULT_CONFIG.conwayApiUrl || "https://api.conway.tech",
     conwayApiKey: params.apiKey,
-    inferenceModel: DEFAULT_CONFIG.inferenceModel || "gpt-4o",
+    inferenceModel:
+      process.env.AUTOMATON_INFERENCE_MODEL ||
+      DEFAULT_CONFIG.inferenceModel ||
+      "gpt-4o",
     maxTokensPerTurn: DEFAULT_CONFIG.maxTokensPerTurn || 4096,
     heartbeatConfigPath:
       DEFAULT_CONFIG.heartbeatConfigPath || "~/.automaton/heartbeat.yml",
