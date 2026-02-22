@@ -35,6 +35,7 @@ export function createSocialClient(
       const res = await fetch(`${baseUrl}/v1/messages`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: AbortSignal.timeout(10000),
         body: JSON.stringify({
           from: account.address.toLowerCase(),
           to: to.toLowerCase(),
@@ -72,6 +73,7 @@ export function createSocialClient(
           "X-Signature": signature,
           "X-Timestamp": timestamp,
         },
+        signal: AbortSignal.timeout(10000),
         body: JSON.stringify({ cursor, limit }),
       });
 
@@ -121,6 +123,7 @@ export function createSocialClient(
           "X-Signature": signature,
           "X-Timestamp": timestamp,
         },
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!res.ok) return 0;
