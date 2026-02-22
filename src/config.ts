@@ -37,11 +37,19 @@ export function loadConfig(): AutomatonConfig | null {
     const inferenceModel =
       process.env.AUTOMATON_INFERENCE_MODEL || raw.inferenceModel;
 
+    // CONWAY_SANDBOX_ID is the canonical env var; AUTOMATON_SANDBOX_ID is an
+    // alias for cases where the user sets it explicitly in Railway.
+    const sandboxId =
+      process.env.CONWAY_SANDBOX_ID ||
+      process.env.AUTOMATON_SANDBOX_ID ||
+      raw.sandboxId;
+
     return {
       ...DEFAULT_CONFIG,
       ...raw,
       conwayApiKey: apiKey,
       inferenceModel,
+      sandboxId,
     } as AutomatonConfig;
   } catch {
     return null;
