@@ -30,7 +30,11 @@ export function loadConfig(): AutomatonConfig | null {
 
   try {
     const raw = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    const apiKey = raw.conwayApiKey || loadApiKeyFromConfig();
+    // CONWAY_API_KEY env var is documented in --help and must actually work.
+    const apiKey =
+      process.env.CONWAY_API_KEY ||
+      raw.conwayApiKey ||
+      loadApiKeyFromConfig();
 
     // Env var overrides take priority so Railway / Docker deployments don't
     // need to touch protected config files.
